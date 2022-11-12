@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+  <head>
+    <title>EMST</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+      class DSU {
+        constructor(size) {
+          this.parent = new Array(size).fill(-1);
+        }
+        
+        find(index) {
+          if (this.parent[index] < 0) {
+            return index;
+          } else {
+            return this.parent[index] = this.find(this.parent[index]);
+          }
+        }
+        
+        unite(l, r) {
+          let x = this.find(l);
+          let y = this.find(r);
+          
+          if (x == y) {
+            return false;
+          } else {
+            if (-this.parent[x] < -this.parent[y]) {
+              [x, y] = [y, x];
+            }
+            
+            this.parent[x] += this.parent[y];
+            this.parent[y] = x;
+            
+            return true;
+          }
+        }
+      }
+
+      let canvas = document.getElementById("canvas");
+      let context = canvas.getContext("2d");
+      
+      let points = [];
+      let selectedPoint = null;
+      
+      function distance(p1, p2) {
+        return (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+      }
+
+      function drawFrame() {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let point of points) {
+          if (point == selectedPoint) {
+            context.fillStyle = "#42b6f5";
+          } else {
+            context.fillStyle = "#4287f5";
+          }
+          
+          context.beginPath();
+          context.arc(point.x, point.y, 7, 0, 2*Math.PI);
+          context.fill();
+        }
+        
+        let edges = [];
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) {
+            edges.push([i, j, distance(points[i], points[j])]);
+          }
+        }
+        edges.sort((edge1, edge2) => {
+          return edge1[2] - edge2[2];
+        });
+        
+        let dsu = new DSU(points.length);
+        for (let edge of edges) {
+          if (dsu.find(edge[0]) != dsu.find(edge[1])) {
+            dsu.unite(edge[0], edge[1]);
+
+            let from = points[edge[0]];
+            let to = points[edge[1]];
+
+            context.beginPath();
+            context.moveTo(from.x, from.y);
+            context.lineTo(to.x, to.y);
+            context.stroke();
+          }
+        }
+      }
+
+      function resize() {
+        canvas.width = document.body.offsetWidth;
+        canvas.height = document.body.offsetHeight;
+        
+        drawFrame();
+      }
+      
+      function mouseMove(e) {
+        selectedPoint.x = e.offsetX;
+        selectedPoint.y = e.offsetY;
+
+        drawFrame();
+      }
+      
+      function mouseUp() {
+        selectedPoint = null;
+
+        canvas.removeEventListener("mousemove", mouseMove);
+        canvas.removeEventListener("mouseup", mouseUp);
+
+        drawFrame();
+      }
+      
+      function distanceTo(point, e) {
+        return (point.x - e.offsetX)**2 + (point.y - e.offsetY)**2;
+      }
+
+      function mouseDown(e) {
+        canvas.style.cursor = "grab";
+        
+        selectedPoint = null;
+        for (let point of points) {
+          if (distanceTo(point, e) < 20**2) {
+            selectedPoint = point;
+            break;
+          }
+        }
+        if (selectedPoint == null) {
+          let id = points.length;
+          let point = {
+            "x": e.offsetX,
+            "y": e.offsetY,
+            "id": id,
+          };
+          points.push(point);
+          selectedPoint = points[id];
+        }
+
+        canvas.addEventListener("mousemove", mouseMove);
+        canvas.addEventListener("mouseup", mouseUp);
+        
+        drawFrame();
+      }
+      
+      canvas.addEventListener("mousedown", mouseDown);
+
+      window.addEventListener("resize", resize);
+
+      resize();
+    </script>
+  </body>
+</html>
