@@ -9,16 +9,17 @@
         height: 100%;
       }
     </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
     <canvas id="canvas"></canvas>
-    
+
     <script>
       class DSU {
         constructor(size) {
           this.parent = new Array(size).fill(-1);
         }
-        
+
         find(index) {
           if (this.parent[index] < 0) {
             return index;
@@ -26,21 +27,21 @@
             return this.parent[index] = this.find(this.parent[index]);
           }
         }
-        
+
         unite(l, r) {
           let x = this.find(l);
           let y = this.find(r);
-          
+
           if (x == y) {
             return false;
           } else {
             if (-this.parent[x] < -this.parent[y]) {
               [x, y] = [y, x];
             }
-            
+
             this.parent[x] += this.parent[y];
             this.parent[y] = x;
-            
+
             return true;
           }
         }
@@ -48,29 +49,29 @@
 
       let canvas = document.getElementById("canvas");
       let context = canvas.getContext("2d");
-      
+
       let points = [];
       let selectedPoint = null;
-      
+
       function distance(p1, p2) {
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
       }
 
       function drawFrame() {
         context.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         for (let point of points) {
           if (point == selectedPoint) {
             context.fillStyle = "#42b6f5";
           } else {
             context.fillStyle = "#4287f5";
           }
-          
+
           context.beginPath();
           context.arc(point.x, point.y, 7, 0, 2*Math.PI);
           context.fill();
         }
-        
+
         let edges = [];
         for (let i = 0; i < points.length; i++) {
           for (let j = i + 1; j < points.length; j++) {
@@ -80,7 +81,7 @@
         edges.sort((edge1, edge2) => {
           return edge1[2] - edge2[2];
         });
-        
+
         let dsu = new DSU(points.length);
         for (let edge of edges) {
           if (dsu.find(edge[0]) != dsu.find(edge[1])) {
@@ -100,17 +101,17 @@
       function resize() {
         canvas.width = document.body.offsetWidth;
         canvas.height = document.body.offsetHeight;
-        
+
         drawFrame();
       }
-      
+
       function mouseMove(e) {
         selectedPoint.x = e.offsetX;
         selectedPoint.y = e.offsetY;
 
         drawFrame();
       }
-      
+
       function mouseUp() {
         selectedPoint = null;
 
@@ -119,17 +120,15 @@
 
         drawFrame();
       }
-      
+
       function distanceTo(point, e) {
         return (point.x - e.offsetX)**2 + (point.y - e.offsetY)**2;
       }
 
-      function mouseDown(e) {
-        canvas.style.cursor = "grab";
-        
+      function selectPoint(from) {
         selectedPoint = null;
         for (let point of points) {
-          if (distanceTo(point, e) < 20**2) {
+          if (distance(point, from) < 20**2) {
             selectedPoint = point;
             break;
           }
@@ -137,21 +136,75 @@
         if (selectedPoint == null) {
           let id = points.length;
           let point = {
-            "x": e.offsetX,
-            "y": e.offsetY,
+            "x": from.x,
+            "y": from.y,
             "id": id,
           };
           points.push(point);
           selectedPoint = points[id];
         }
+      }
+
+      function mouseDown(e) {
+        canvas.style.cursor = "grab";
+
+        selectPoint({
+          "x": e.offsetX,
+          "y": e.offsetY,
+        });
 
         canvas.addEventListener("mousemove", mouseMove);
         canvas.addEventListener("mouseup", mouseUp);
-        
+
         drawFrame();
       }
-      
+
+      function touchStart(e) {
+        e.preventDefault();
+
+        let touches = e.changedTouches;
+
+
+        if (touches.length > 0) {
+          selectPoint({
+            "x": touches[0].pageX,
+            "y": touches[0].pageY,
+          });
+
+          drawFrame();
+        }
+      }
+
+      function touchMove(e) {
+        e.preventDefault();
+
+        let touches = e.changedTouches;
+
+        if (touches.length > 0) {
+          selectedPoint.x = touches[0].pageX;
+          selectedPoint.y = touches[0].pageY;
+
+          drawFrame();
+        }
+      }
+
+      function touchEnd(e) {
+        e.preventDefault();
+
+        let touches = e.changedTouches;
+
+        if (touches.length > 0) {
+          selectedPoint = null;
+
+          drawFrame();
+        }
+      }
+
       canvas.addEventListener("mousedown", mouseDown);
+      canvas.addEventListener("touchstart", touchStart);
+      canvas.addEventListener("touchmove", touchMove);
+      canvas.addEventListener("touchend", touchEnd);
+      canvas.addEventListener("touchcancel", touchEnd);
 
       window.addEventListener("resize", resize);
 
