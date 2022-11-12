@@ -51,7 +51,9 @@
       let context = canvas.getContext("2d");
 
       let points = [];
-      let selectedPoint = null;
+      let selectedPoints = {};
+
+      const mouseIdentifier = 0;
 
       function distance(p1, p2) {
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
@@ -61,7 +63,7 @@
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         for (let point of points) {
-          if (point == selectedPoint) {
+          if (point.selected) {
             context.fillStyle = "#42b6f5";
           } else {
             context.fillStyle = "#4287f5";
@@ -106,14 +108,16 @@
       }
 
       function mouseMove(e) {
-        selectedPoint.x = e.offsetX;
-        selectedPoint.y = e.offsetY;
+        selectedPoints[mouseIdentifier].x = e.offsetX;
+        selectedPoints[mouseIdentifier].y = e.offsetY;
 
         drawFrame();
       }
 
       function mouseUp() {
-        selectedPoint = null;
+        selectedPoints[mouseIdentifier].selected = false;
+
+        delete selectedPoints[mouseIdentifier];
 
         canvas.removeEventListener("mousemove", mouseMove);
         canvas.removeEventListener("mouseup", mouseUp);
@@ -121,27 +125,22 @@
         drawFrame();
       }
 
-      function distanceTo(point, e) {
-        return (point.x - e.offsetX)**2 + (point.y - e.offsetY)**2;
-      }
-
-      function selectPoint(from) {
-        selectedPoint = null;
+      function selectPoint(from, identifier) {
         for (let point of points) {
           if (distance(point, from) < 20**2) {
-            selectedPoint = point;
+            point.selected = true;
+            selectedPoints[identifier] = point;
             break;
           }
         }
-        if (selectedPoint == null) {
-          let id = points.length;
+        if (selectedPoints[identifier] == null) {
           let point = {
             "x": from.x,
             "y": from.y,
-            "id": id,
+            "selected": true,
           };
           points.push(point);
-          selectedPoint = points[id];
+          selectedPoints[identifier] = point;
         }
       }
 
@@ -151,7 +150,7 @@
         selectPoint({
           "x": e.offsetX,
           "y": e.offsetY,
-        });
+        }, mouseIdentifier);
 
         canvas.addEventListener("mousemove", mouseMove);
         canvas.addEventListener("mouseup", mouseUp);
@@ -162,42 +161,36 @@
       function touchStart(e) {
         e.preventDefault();
 
-        let touches = e.changedTouches;
-
-
-        if (touches.length > 0) {
+        for (let touch of e.changedTouches) {
           selectPoint({
-            "x": touches[0].pageX,
-            "y": touches[0].pageY,
-          });
-
-          drawFrame();
+            "x": touch.pageX,
+            "y": touch.pageY,
+          }, touch.identifier);
         }
+
+        drawFrame();
       }
 
       function touchMove(e) {
         e.preventDefault();
 
-        let touches = e.changedTouches;
-
-        if (touches.length > 0) {
-          selectedPoint.x = touches[0].pageX;
-          selectedPoint.y = touches[0].pageY;
-
-          drawFrame();
+        for (let touch of e.changedTouches) {
+          selectedPoints[touch.identifier].x = touch.pageX;
+          selectedPoints[touch.identifier].y = touch.pageY;
         }
+
+        drawFrame();
       }
 
       function touchEnd(e) {
         e.preventDefault();
 
-        let touches = e.changedTouches;
-
-        if (touches.length > 0) {
-          selectedPoint = null;
-
-          drawFrame();
+        for (let touch of e.changedTouches) {
+          selectedPoints[touch.identifier].selected = false;
+          delete selectedPoints[touch.identifier];
         }
+
+        drawFrame();
       }
 
       canvas.addEventListener("mousedown", mouseDown);
